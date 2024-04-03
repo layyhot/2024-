@@ -1,0 +1,14 @@
+".\Objects\main.obj",
+".\Objects\Timer.obj",
+".\Objects\Usart.obj",
+".\Objects\bsp_555_PWM_Freq.obj",
+".\Objects\bsp_ds1302.obj",
+".\Objects\bsp_iic.obj",
+".\Objects\bsp_init.obj",
+".\Objects\bsp_key.obj",
+".\Objects\bsp_led.obj",
+".\Objects\bsp_onewire.obj",
+".\Objects\bsp_seg.obj",
+".\Objects\bsp_ultrasonic.obj" 
+TO ".\Objects\2101177" 
+PRINT(".\Listings\2101177.m51") RAMSIZE(256) 

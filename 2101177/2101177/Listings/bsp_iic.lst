@@ -1,0 +1,228 @@
+C51 COMPILER V9.59.0.0   BSP_IIC                                                           04/02/2024 17:06:24 PAGE 1   
+
+
+C51 COMPILER V9.59.0.0, COMPILATION OF MODULE BSP_IIC
+OBJECT MODULE PLACED IN .\Objects\bsp_iic.obj
+COMPILER INVOKED BY: E:\Keil5\C51\BIN\C51.EXE ..\Driver\bsp_iic.c OPTIMIZE(8,SPEED) BROWSE INCDIR(..\Driver;..\Sys;..\Us
+                    -er) DEBUG OBJECTEXTEND PRINT(.\Listings\bsp_iic.lst) TABS(2) OBJECT(.\Objects\bsp_iic.obj)
+
+line level    source
+
+   1          /*
+   2            程序说明: IIC总线驱动程序
+   3            软件环境: Keil uVision 4.10 
+   4            硬件环境: CT107单片机综合实训平台 8051，12MHz
+   5            日    期: 2011-8-9
+   6          */
+   7          
+   8          //稍微改一改
+   9          #include "bsp_iic.h"
+  10          
+  11          #define DELAY_TIME 5
+  12          
+  13          //强制屏蔽
+  14          //#define SlaveAddrW 0xA0
+  15          //#define SlaveAddrR 0xA1
+  16          
+  17          //总线引脚定义
+  18          sbit SDA = P2^1;  /* 数据线 */
+  19          sbit SCL = P2^0;  /* 时钟线 */
+  20          
+  21          void IIC_Delay(unsigned char i)
+  22          {
+  23   1          do{_nop_();}
+  24   1          while(i--);        
+  25   1      }
+  26          //总线启动条件
+  27          void IIC_Start(void)
+  28          {
+  29   1          SDA = 1;
+  30   1          SCL = 1;
+  31   1          IIC_Delay(DELAY_TIME);
+  32   1          SDA = 0;
+  33   1          IIC_Delay(DELAY_TIME);
+  34   1          SCL = 0;  
+  35   1      }
+  36          
+  37          //总线停止条件
+  38          void IIC_Stop(void)
+  39          {
+  40   1          SDA = 0;
+  41   1          SCL = 1;
+  42   1          IIC_Delay(DELAY_TIME);
+  43   1          SDA = 1;
+  44   1          IIC_Delay(DELAY_TIME);
+  45   1      }
+  46          
+  47          //发送应答
+  48          void IIC_SendAck(bit ackbit)
+  49          {
+  50   1          SCL = 0;
+  51   1          SDA = ackbit;           // 0：应答，1：非应答
+  52   1          IIC_Delay(DELAY_TIME);
+  53   1          SCL = 1;
+  54   1          IIC_Delay(DELAY_TIME);
+C51 COMPILER V9.59.0.0   BSP_IIC                                                           04/02/2024 17:06:24 PAGE 2   
+
+  55   1          SCL = 0; 
+  56   1          SDA = 1;
+  57   1          IIC_Delay(DELAY_TIME);
+  58   1      }
+  59          
+  60          //等待应答
+  61          bit IIC_WaitAck(void)
+  62          {
+  63   1          bit ackbit;
+  64   1        
+  65   1          SCL  = 1;
+  66   1          IIC_Delay(DELAY_TIME);
+  67   1          ackbit = SDA;
+  68   1          SCL = 0;
+  69   1          IIC_Delay(DELAY_TIME);
+  70   1          return ackbit;
+  71   1      }
+  72          
+  73          //通过I2C总线发送数据
+  74          void IIC_SendByte(unsigned char byt)
+  75          {
+  76   1          unsigned char i;
+  77   1      
+  78   1          for(i=0; i<8; i++)
+  79   1          {
+  80   2              SCL  = 0;
+  81   2              IIC_Delay(DELAY_TIME);
+  82   2              if(byt & 0x80) SDA  = 1;
+  83   2              else SDA  = 0;
+  84   2              IIC_Delay(DELAY_TIME);
+  85   2              SCL = 1;
+  86   2              byt <<= 1;
+  87   2              IIC_Delay(DELAY_TIME);
+  88   2          }
+  89   1          SCL  = 0;  
+  90   1      }
+  91          
+  92          //从I2C总线上接收数据
+  93          unsigned char IIC_RecByte(void)
+  94          {
+  95   1          unsigned char i, da;
+  96   1          for(i=0; i<8; i++)
+  97   1          {   
+  98   2            SCL = 1;
+  99   2        IIC_Delay(DELAY_TIME);
+ 100   2        da <<= 1;
+ 101   2        if(SDA) da |= 1;
+ 102   2        SCL = 0;
+ 103   2        IIC_Delay(DELAY_TIME);
+ 104   2          }
+ 105   1          return da;    
+ 106   1      }
+ 107          
+ 108          //***************这一部分需要自己写---两个读的内容，对比记忆
+ 109          unsigned char Pcf8591_Adc(unsigned char channel_num_contrl)
+ 110          {
+ 111   1        unsigned char temp;
+ 112   1        
+ 113   1        IIC_Start();
+ 114   1        IIC_SendByte(0x90);
+ 115   1        IIC_WaitAck();
+ 116   1        
+C51 COMPILER V9.59.0.0   BSP_IIC                                                           04/02/2024 17:06:24 PAGE 3   
+
+ 117   1        IIC_SendByte(channel_num_contrl);
+ 118   1        IIC_WaitAck();  
+ 119   1      
+ 120   1        //-------------先用写的形式访问，再用读的形式访问
+ 121   1        
+ 122   1        IIC_Start();
+ 123   1        IIC_SendByte(0x91);
+ 124   1        IIC_WaitAck();
+ 125   1      
+ 126   1        temp = IIC_RecByte();
+ 127   1        IIC_SendAck(1);
+ 128   1        IIC_Stop();
+ 129   1        
+ 130   1        return temp;
+ 131   1      }
+ 132          
+ 133          void EEPROM_Read (unsigned char *EEPROM_String, unsigned char addr, unsigned char num)
+ 134          {
+ 135   1      
+ 136   1        IIC_Start();
+ 137   1        IIC_SendByte(0XA0);
+ 138   1        IIC_WaitAck();
+ 139   1        
+ 140   1        IIC_SendByte(addr);
+ 141   1        IIC_WaitAck();  
+ 142   1      
+ 143   1        //-------------先用写的形式访问，再用读的形式访问
+ 144   1      
+ 145   1        IIC_Start();
+ 146   1        IIC_SendByte(0XA1);
+ 147   1        IIC_WaitAck();
+ 148   1      
+ 149   1        while(num--)
+ 150   1        {
+ 151   2        
+ 152   2          *EEPROM_String++ = IIC_RecByte();
+ 153   2          if(num)   IIC_SendAck(0);
+ 154   2          else  IIC_SendAck(1);
+ 155   2        }
+ 156   1        
+ 157   1        IIC_Stop();
+ 158   1      }
+ 159          
+ 160          
+ 161          
+ 162          
+ 163          //***************这一部分需要自己写---两个写的内容，对比记忆
+ 164          void Pcf8591_Dac(unsigned char trans_dat)
+ 165          {
+ 166   1      
+ 167   1        IIC_Start();
+ 168   1        IIC_SendByte(0x90);
+ 169   1        IIC_WaitAck();
+ 170   1        
+ 171   1        IIC_SendByte(0x41);
+ 172   1        IIC_WaitAck();  
+ 173   1        
+ 174   1        IIC_SendByte(trans_dat);
+ 175   1        IIC_WaitAck();  
+ 176   1        IIC_Stop();
+ 177   1      }
+ 178          
+C51 COMPILER V9.59.0.0   BSP_IIC                                                           04/02/2024 17:06:24 PAGE 4   
+
+ 179          void EEPROM_Write(unsigned char *EEPROM_String, unsigned char addr, unsigned char num)
+ 180          {
+ 181   1        IIC_Start();
+ 182   1        IIC_SendByte(0xA0);
+ 183   1        IIC_WaitAck();
+ 184   1        
+ 185   1        IIC_SendByte(addr);
+ 186   1        IIC_WaitAck();  
+ 187   1        
+ 188   1        while(num--)
+ 189   1        {
+ 190   2          IIC_SendByte(*EEPROM_String++); 
+ 191   2          IIC_WaitAck();  
+ 192   2          IIC_Delay(200);
+ 193   2        }
+ 194   1        IIC_Stop();
+ 195   1      }
+ 196          
+ 197          
+ 198          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    385    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----      10
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----       2
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

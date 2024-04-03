@@ -1,0 +1,315 @@
+C51 COMPILER V9.59.0.0   MAIN                                                              04/02/2024 17:06:24 PAGE 1   
+
+
+C51 COMPILER V9.59.0.0, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN .\Objects\main.obj
+COMPILER INVOKED BY: E:\Keil5\C51\BIN\C51.EXE ..\User\main.c OPTIMIZE(8,SPEED) BROWSE INCDIR(..\Driver;..\Sys;..\User) D
+                    -EBUG OBJECTEXTEND PRINT(.\Listings\main.lst) TABS(2) OBJECT(.\Objects\main.obj)
+
+line level    source
+
+   1          #include "stdio.h"//给sprintf专用
+   2          
+   3          #include "Timer.h"//内部就一个
+   4          
+   5          #include "bsp_init.h"//外部挺多余的
+   6          #include "bsp_key.h"//三大金刚之1 key 用手触摸的
+   7          #include "bsp_seg.h"//三大金刚之2 seg 用眼能看到
+   8          #include "bsp_led.h"//三大金刚之3 led 你还弥红灯了，晃眼，我不爱你
+   9          
+  10          
+  11          
+  12          //根据考核模块添加头文件
+  13          
+  14          //--考察温度传感器时用
+  15          //#include "bsp_onewire.h"
+  16          
+  17          //--考察时钟时专用
+  18          //#include "bsp_ds1302.h"
+  19          
+  20          //--考察EEPROM/AD/DA时用
+  21          //#include "bsp_iic.h"
+  22          
+  23          //--考察555频率测量时候使用
+  24          #include "bsp_555_PWM_Freq.h"
+  25          
+  26          //--考察串口时候使用
+  27          //#include "Usart.h"
+  28          
+  29          //--考察超声波的时候使用
+  30          //#include "bsp_ultrasonic.h"
+  31          
+  32          
+  33          
+  34          //三大金刚函数声明区
+  35          void Key_Proc(void);
+  36          void Seg_Proc(void);
+  37          void Led_Proc(void);
+  38          
+  39          
+  40          //根据考核内容，其他函数声明区
+  41          //--考察串口时候使用
+  42          //void Uart_Proc(void);
+  43          
+  44          
+  45          //变量区
+  46          //--定时器滴答变量
+  47          unsigned long ms_Tick = 0;
+  48          
+  49          //--定时器减速变量
+  50          unsigned int Key_Slow_Down;
+  51          unsigned int Seg_Slow_Down;
+  52          unsigned int Led_Slow_Down;
+  53          
+  54          
+C51 COMPILER V9.59.0.0   MAIN                                                              04/02/2024 17:06:24 PAGE 2   
+
+  55          //--按键专用变量
+  56          unsigned char Key_Value;
+  57          unsigned char Key_Old, Key_Down;
+  58          
+  59          //--数码管专用变量
+  60          unsigned char seg_string[10];
+  61          unsigned char seg_buf[8] = {0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff};
+  62          unsigned char pos;
+  63          
+  64          //--LED专用变量
+  65          unsigned char ucLed;
+  66          
+  67          
+  68          
+  69          /***用户自定义变量区开始↓***/
+  70          
+  71          bit state_flag = 0;//测试模板好坏需要用的一个变量
+  72          
+  73          //--EEPROM测试专用变量
+  74          //unsigned char eeprom_string[4] = {11,12,13,14};
+  75          //unsigned char eeprom_string_null[4];
+  76          
+  77          //--时钟专用变量
+  78          //unsigned char Rtc[3] = {23,59,55};
+  79          
+  80          //--555测量频率专用变量
+  81          unsigned int freq;
+  82          
+  83          //--串口专用变量
+  84          //unsigned int Usart_Slow_Down;
+  85          //unsigned char Uart_Buf[8];//数据发送和接收的缓存区
+  86          //unsigned char Uart_Buf_Index = 0;
+  87          
+  88          /***用户自定义变量区结束↑***/
+  89          
+  90          
+  91          
+  92          void main(void)
+  93          {
+  94   1      
+  95   1        Cls_Peripheral();//关闭LED/继电器/蜂鸣器
+  96   1        Timer1Init();//定时器1初始化
+  97   1        EA = 1;//打开总中断
+  98   1      
+  99   1        //--EEPROM测试
+ 100   1        //EEPROM_Write(eeprom_string, 0, 4);  
+ 101   1        
+ 102   1        //--时钟测试
+ 103   1        //Set_Rtc(Rtc);
+ 104   1        
+ 105   1        //--555测量频率专用的初始化函数
+ 106   1        //PWM_555_Freq_Timer0Init();    //配置成了计数器模式，不自动重装
+ 107   1        
+ 108   1        //--串口专用
+ 109   1        //UsartInit();
+ 110   1        
+ 111   1        //--超声波专用
+ 112   1        //Ultrasonic_Timer0Init();    
+ 113   1        
+ 114   1        while(1)
+ 115   1        {
+ 116   2          
+C51 COMPILER V9.59.0.0   MAIN                                                              04/02/2024 17:06:24 PAGE 3   
+
+ 117   2          Key_Proc();//三大金刚子函数
+ 118   2          Seg_Proc();
+ 119   2          Led_Proc();
+ 120   2          
+ 121   2          //--串口专用
+ 122   2      //    Uart_Proc();
+ 123   2          
+ 124   2        }
+ 125   1      }
+ 126          
+ 127          
+ 128          
+ 129          /* Timer1_interrupt routine */
+ 130          void tm1_isr() interrupt 3
+ 131          {
+ 132   1        ms_Tick++;//滴答定时器，能记录的数据长达29天
+ 133   1        
+ 134   1        if(++Key_Slow_Down == 10) Key_Slow_Down = 0;//减速变量区，控制子函数的刷新频率
+ 135   1        if(++Seg_Slow_Down == 500) Seg_Slow_Down = 0; 
+ 136   1        if(++Led_Slow_Down == 100) Led_Slow_Down = 0; 
+ 137   1      //--串口专用减速
+ 138   1      //  if(++Usart_Slow_Down == 100) Usart_Slow_Down = 0; 
+ 139   1        
+ 140   1        
+ 141   1      //--555测量频率专用的测量函数
+ 142   1      //    if((ms_Tick%1000) == 0)
+ 143   1      //  {
+ 144   1      //    freq = ((TH0<<8)|TL0);
+ 145   1      //    TH0 = 0;
+ 146   1      //    TL0 = 0;
+ 147   1      //  }
+ 148   1        
+ 149   1        
+ 150   1        
+ 151   1        
+ 152   1        
+ 153   1        Seg_Disp(seg_buf, pos);//用于数码管显示
+ 154   1        if(++pos == 8) pos = 0;
+ 155   1        
+ 156   1        Led_Disp(ucLed);//用于LED显示
+ 157   1        
+ 158   1      }
+ 159          
+ 160          
+ 161          
+ 162          
+ 163          
+ 164          
+ 165          
+ 166          
+ 167          
+ 168          void  Key_Proc(void)
+ 169          {
+ 170   1        if(Key_Slow_Down) return;
+ 171   1        Key_Slow_Down = 1;
+ 172   1        
+ 173   1        //三行代码
+ 174   1        Key_Value = Key_Read();
+ 175   1        Key_Down = Key_Value & (Key_Old ^ Key_Value);//下降沿，按得哪个按键，这个值就是几
+ 176   1        Key_Old = Key_Value;//检测电平，一直按着一直等于一个数
+ 177   1        
+ 178   1        
+C51 COMPILER V9.59.0.0   MAIN                                                              04/02/2024 17:06:24 PAGE 4   
+
+ 179   1        /***用户自定义代码区↓***/  
+ 180   1        switch(Key_Down)//这个结构很常见，判别是哪个按键按下去了，根据按键按下的情况，控制内部数据变量的变化
+ 181   1        {
+ 182   2          case 4:
+ 183   2              state_flag ^= 1;//0-（测试数码管和定时器）显示12345678，（测试灯）灯亮；1-温度或者其他值
+ 184   2              break;//这个break很重要
+ 185   2          case 5:
+ 186   2              state_flag ^= 1;//0-（测试数码管和定时器）显示12345678，（测试灯）灯亮；1-温度或者其他值
+ 187   2              break;//这个break很重要
+ 188   2          case 6:
+ 189   2              state_flag ^= 1;//0-（测试数码管和定时器）显示12345678，（测试灯）灯亮；1-温度或者其他值
+ 190   2              break;//这个break很重要
+ 191   2          case 7:
+ 192   2              state_flag ^= 1;//0-（测试数码管和定时器）显示12345678，（测试灯）灯亮；1-温度或者其他值
+ 193   2              break;//这个break很重要
+ 194   2      
+ 195   2        }
+ 196   1        /***用户自定义代码区↑***/    
+ 197   1      
+ 198   1        
+ 199   1      }
+ 200          
+ 201          
+ 202          
+ 203          
+ 204          
+ 205          void Seg_Proc(void)
+ 206          {
+ 207   1        if(Seg_Slow_Down) return;
+ 208   1        Seg_Slow_Down = 1;
+ 209   1        
+ 210   1        /***用户自定义代码区↓***/  
+ 211   1        if(state_flag == 4)
+ 212   1        {
+ 213   2          sprintf(seg_string,"12345678"); 
+ 214   2        }   
+ 215   1        else //屏幕上显示的内容，在这个地方，就等同于seg_string中放了什么内容，你敢放什么，我就敢显示什么，不敢装
+             -逼，只限制于seg能显示的范围。
+ 216   1        {
+ 217   2          //--温度传感器专用
+ 218   2          sprintf(seg_string,"%-4-  02dC",(unsigned int)(rd_temperature()/16.0)); 
+*** WARNING C206 IN LINE 218 OF ..\User\main.c: 'rd_temperature': missing function-prototype
+ 219   2          
+ 220   2            
+ 221   2          //--555频率测试
+ 222   2          //sprintf(seg_string,"---%5d",freq);      
+ 223   2        }
+ 224   1        
+ 225   1        /***用户自定义代码区↑***/      
+ 226   1        
+ 227   1        Seg_Tran(seg_string, seg_buf);
+ 228   1      }
+ 229          
+ 230          
+ 231          
+ 232          
+ 233          
+ 234          
+ 235          void  Led_Proc(void)
+ 236          {
+ 237   1        if(Led_Slow_Down) return;
+ 238   1        Led_Slow_Down = 1;
+C51 COMPILER V9.59.0.0   MAIN                                                              04/02/2024 17:06:24 PAGE 5   
+
+ 239   1        
+ 240   1        
+ 241   1        /***用户自定义代码区↓***/    
+ 242   1        if(state_flag == 0)
+ 243   1          ucLed = 0xff;     
+ 244   1        else 
+ 245   1          ucLed = 0;  
+ 246   1        /***用户自定义代码区↑***/      
+ 247   1      
+ 248   1      }
+ 249          
+ 250          
+ 251          
+ 252          /*----------------------------
+ 253          串口专用，UART中断服务程序
+ 254          -----------------------------*/
+ 255          //void Uart() interrupt 4
+ 256          //{
+ 257          //  if (RI)
+ 258          //  {
+ 259          //    RI = 0;                 //清除RI位
+ 260          //    Uart_Buf[Uart_Buf_Index] = SBUF;              //P0显示串口数据
+ 261          //    Uart_Buf_Index++;//第n个数据过来之后，变成了n
+ 262          //  }
+ 263          //}
+ 264          
+ 265          /*----------------------------
+ 266          串口专用，串口处理子程序
+ 267          -----------------------------*/
+ 268          //void Uart_Proc(void)
+ 269          //{
+ 270          //  if(Usart_Slow_Down) return;
+ 271          //    Usart_Slow_Down = 1;
+ 272          //  
+ 273          //  if(Uart_Buf_Index != 0)//表示接收到了数据
+ 274          //  {
+ 275          //    Uart_Buf_Index = 0;
+ 276          
+ 277          //    sprintf(seg_string,"%s",Uart_Buf);      
+ 278          //    Usart_Send_String(seg_string);
+ 279          //  }
+ 280          //}
+ 281          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    343    ----
+   CONSTANT SIZE    =     20    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     35    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =      1    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  1 WARNING(S),  0 ERROR(S)

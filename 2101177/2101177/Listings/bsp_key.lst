@@ -1,0 +1,90 @@
+C51 COMPILER V9.59.0.0   BSP_KEY                                                           04/02/2024 17:06:24 PAGE 1   
+
+
+C51 COMPILER V9.59.0.0, COMPILATION OF MODULE BSP_KEY
+OBJECT MODULE PLACED IN .\Objects\bsp_key.obj
+COMPILER INVOKED BY: E:\Keil5\C51\BIN\C51.EXE ..\Driver\bsp_key.c OPTIMIZE(8,SPEED) BROWSE INCDIR(..\Driver;..\Sys;..\Us
+                    -er) DEBUG OBJECTEXTEND PRINT(.\Listings\bsp_key.lst) TABS(2) OBJECT(.\Objects\bsp_key.obj)
+
+line level    source
+
+   1          #include "bsp_key.h"
+   2          
+   3          //根据考题决定是编写独立按键还是矩阵键盘
+   4          
+   5          //--独立按键
+   6          unsigned char Key_Read_BTN(void)
+   7          {
+   8   1        unsigned char Key_Value;
+   9   1        
+  10   1        if(P30 == 0) Key_Value = 7;
+  11   1        else  if(P31 == 0) Key_Value = 6;
+  12   1        else  if(P32 == 0) Key_Value = 5;
+  13   1        else  if(P33 == 0) Key_Value = 4;
+  14   1        else Key_Value = 0;
+  15   1      
+  16   1        return Key_Value;
+  17   1      }
+  18          
+  19          //--矩阵键盘
+  20          unsigned char Key_Read(void)
+  21          {
+  22   1        unsigned int Key_New;
+  23   1        unsigned char Key_Value;
+  24   1        
+  25   1        P44 = 0;P42 = 1;P35 = 1;P34 = 1;
+  26   1        Key_New = P3 & 0X0F;
+  27   1        
+  28   1        P44 = 1;P42 = 0;P35 = 1;P34 = 1;
+  29   1        Key_New = (Key_New<<4)|(P3 & 0X0F);
+  30   1        
+  31   1        P44 = 1;P42 = 1;P35 = 0;P34 = 1;
+  32   1        Key_New = (Key_New<<4)|(P3 & 0X0F);
+  33   1        
+  34   1        P44 = 1;P42 = 1;P35 = 1;P34 = 0;
+  35   1        Key_New = (Key_New<<4)|(P3 & 0X0F);
+  36   1        
+  37   1        switch(~Key_New)
+  38   1        {
+  39   2          case 0x8000: Key_Value = 4; break;
+  40   2          case 0x4000: Key_Value = 5; break;  
+  41   2          case 0x2000: Key_Value = 6; break;  
+  42   2          case 0x1000: Key_Value = 7; break;  
+  43   2        
+  44   2          case 0x0800: Key_Value = 8; break;
+  45   2          case 0x0400: Key_Value = 9; break;  
+  46   2          case 0x0200: Key_Value = 10; break; 
+  47   2          case 0x0100: Key_Value = 11; break; 
+  48   2      
+  49   2          case 0x0080: Key_Value = 12; break;
+  50   2          case 0x0040: Key_Value = 13; break; 
+  51   2          case 0x0020: Key_Value = 14; break; 
+  52   2          case 0x0010: Key_Value = 15; break;     
+  53   2        
+  54   2          case 0x0008: Key_Value = 16; break;
+C51 COMPILER V9.59.0.0   BSP_KEY                                                           04/02/2024 17:06:24 PAGE 2   
+
+  55   2          case 0x0004: Key_Value = 17; break; 
+  56   2          case 0x0002: Key_Value = 18; break; 
+  57   2          case 0x0001: Key_Value = 19; break;     
+  58   2          default :  Key_Value = 0;
+  59   2        }
+  60   1        
+  61   1        return Key_Value;
+  62   1        
+  63   1      }
+  64          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    290    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----       1
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
