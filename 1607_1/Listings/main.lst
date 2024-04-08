@@ -1,0 +1,285 @@
+C51 COMPILER V9.56.0.0   MAIN                                                              03/05/2021 09:02:50 PAGE 1   
+
+
+C51 COMPILER V9.56.0.0, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN .\Objects\main.obj
+COMPILER INVOKED BY: D:\10.1 keil51\C51\BIN\C51.EXE main.c OPTIMIZE(8,SPEED) BROWSE INCDIR(..\..\Driver;..\..\Sys) DEBUG
+                    - OBJECTEXTEND PRINT(.\Listings\main.lst) TABS(2) OBJECT(.\Objects\main.obj)
+
+line level    source
+
+   1          # include "bsp_init.h"
+   2          
+   3          # include "bsp_seg.h"
+   4          # include "timer.h"
+*** WARNING C329 IN LINE 8 OF ..\..\Sys\timer.h: single-line comment contains line-continuation
+*** WARNING C329 IN LINE 9 OF ..\..\Sys\timer.h: single-line comment contains line-continuation
+*** WARNING C329 IN LINE 17 OF ..\..\Sys\timer.h: single-line comment contains line-continuation
+*** WARNING C329 IN LINE 18 OF ..\..\Sys\timer.h: single-line comment contains line-continuation
+   5          # include "bsp_key.h"
+   6          # include "bsp_led.h"
+   7          
+   8          #include "bsp_onewire.h"
+   9          
+  10          # include "stdio.h"
+  11          
+  12          
+  13          #define  PWM_OUT  P34 //define是用前边的代替后边的
+  14          
+  15          //-----------------------------------------------
+  16          /* 函数声明 */
+  17          //三个主体循环，基本上永远不变
+  18          void Key_Proc(void);//按键处理，底层数据变更
+  19          void Seg_Proc(void);//显示处理，显示信息生成
+  20          void Led_Proc(void);//LED处理，LED状态信息表示
+  21          
+  22          
+  23          //-----------------------------------------------
+  24          /* 全局变量声明 */
+  25          
+  26          //数码管显示专用，基本上永远不变
+  27          unsigned char seg_buf[8];//放置字符串转换后的段码到数组
+  28          unsigned char seg_string[10];//放置字符串
+  29          unsigned char pos = 0;//中断显示专用
+  30          
+  31          //LED显示专用，基本上永远不变
+  32          unsigned char ucLed;//记录LED的状态信息
+  33          
+  34          //按键专用，基本上永远不变
+  35          unsigned char Key_Value;//读取按键的数值存储变量
+  36          unsigned char Key_Down, Key_Old;//读取按键的数值存储变量  
+  37          
+  38          //按键和显示函数减速专用，基本永远不变
+  39          unsigned int Key_Slow_Down;//按键减速
+  40          unsigned int Seg_Slow_Down;//按键减速
+  41          
+  42          
+  43          //根据代码需求发生变化
+  44          unsigned char Running_Mode = 0; //运行模式,初始值为模式0 
+  45          unsigned char Countdown_Sec = 0; //倒计时秒，初始值为模式0 
+  46          bit Temp_Mode = 0;//温度显示模式。1时，温度显示模式，当为0时，常规显示模式。
+  47          
+  48          unsigned char Count_100us = 0; //记录第几次进入定时器0的100us中断
+  49          unsigned char Count_PWM = 0; //为产生PWM而产生的count
+  50          unsigned int Count_1ms = 0; //记录第几次进入定时器1的1ms中断
+C51 COMPILER V9.56.0.0   MAIN                                                              03/05/2021 09:02:50 PAGE 2   
+
+  51          
+  52          unsigned char S5_Countdown_Sec_Sluggish = 0; //令S5按下去之后，秒递减呆滞两秒的变量。
+  53          unsigned int temp;
+  54          //-----------------------------------------------
+  55          /* main */
+  56          void main()
+  57          {
+  58   1        //根据代码需求发生变化
+  59   1        Cls_Peripheral();//关闭外设
+  60   1        Timer1Init();//定时器1初始化，并且使能定时器1中断，1ms进入一次
+  61   1        Timer0Init();//定时器0初始化，  100us进入一次中断函数。
+  62   1        EA = 1;//打开总中断
+  63   1      
+  64   1      
+  65   1        while(1)
+  66   1        {
+  67   2          //永远不变
+  68   2          Key_Proc();//按键处理，底层数据变更
+  69   2          Seg_Proc();//显示处理，显示信息生成
+  70   2          Led_Proc();//LED处理，LED状态信息表示   
+  71   2        }
+  72   1      
+  73   1      
+  74   1      }
+  75          
+  76          
+  77          
+  78          //-----------------------------------------------
+  79          /* Timer1_interrupt routine 1000us*/
+  80          void tm1_isr() interrupt 3
+  81          { 
+  82   1        
+  83   1        //永远不变
+  84   1        if(++Key_Slow_Down == 10) Key_Slow_Down = 0;
+  85   1        if(++Seg_Slow_Down == 500) Seg_Slow_Down = 0;
+  86   1        
+  87   1      
+  88   1        if(++Count_1ms == 1000) //秒定时
+  89   1        {
+  90   2          Count_1ms = 0;
+  91   2          if(S5_Countdown_Sec_Sluggish) S5_Countdown_Sec_Sluggish--;//呆滞有效函数
+  92   2          else if( (--Countdown_Sec) > 200) Countdown_Sec = 0;//风扇定时自动递减
+  93   2        }
+  94   1        
+  95   1        
+  96   1      
+  97   1        //永远不变
+  98   1        Seg_Disp(seg_buf, pos);//数码管显示刷新
+  99   1        if( ++pos == 8 )  pos = 0;
+ 100   1        
+ 101   1      
+ 102   1        
+ 103   1        
+ 104   1      }
+ 105          
+ 106          
+ 107          //-----------------------------------------------
+ 108          /* Timer0_interrupt routine 100us*/
+ 109          void tm0_isr() interrupt 1
+ 110          { 
+ 111   1        
+ 112   1        if(Countdown_Sec)
+C51 COMPILER V9.56.0.0   MAIN                                                              03/05/2021 09:02:50 PAGE 3   
+
+ 113   1        {
+ 114   2          
+ 115   2          
+ 116   2            if( ++Count_100us== 10) 
+ 117   2            { 
+ 118   3              Count_100us=0;//让记录第几次的变量，在0-9之间变化。
+ 119   3              PWM_OUT = 1;//每10次拉高一次
+ 120   3              ucLed |= 0xF8;//令高5位置1，后五个灯亮
+ 121   3            }
+ 122   2            
+ 123   2            switch(Running_Mode)
+ 124   2            {
+ 125   3              case 0: Count_PWM = 2; break;
+ 126   3              case 1: Count_PWM = 3; break;
+ 127   3              case 2: Count_PWM = 7; break;
+ 128   3            }
+ 129   2            
+ 130   2            if(Count_100us == Count_PWM) 
+ 131   2            {
+ 132   3              PWM_OUT = 0;//到模式规定的状态位置，拉低一次。
+ 133   3              ucLed &= 0x07;//令高5位复0，后五个灯灭  
+ 134   3            }
+ 135   2          }
+ 136   1        else
+ 137   1        {
+ 138   2              PWM_OUT = 0;//回复到复位状态。
+ 139   2              ucLed &= 0x07;//令高5位复0，后五个灯灭      
+ 140   2        }
+ 141   1        
+ 142   1        Led_Disp(ucLed);//LED显示 
+ 143   1        
+ 144   1      }
+ 145          
+ 146          
+ 147          
+ 148          
+ 149          //-----------------------------------------------
+ 150          /*key_proc */
+ 151          
+ 152          void Key_Proc(void)//按键处理，底层数据变更
+ 153          {
+ 154   1        //永远不变
+ 155   1        if(Key_Slow_Down) return;
+ 156   1        Key_Slow_Down = 1;//减速程序
+ 157   1        
+ 158   1        Key_Value = Key_Read();//读取按键按下的编号
+ 159   1        Key_Down = Key_Value & (Key_Old ^ Key_Value);// (0000^0101) = 0101     0101 & 0101 =0101  ,如果按键发生了
+             -下降沿的变化，输出结果和本次按键数值相同
+ 160   1                                                // (0101^0101) = 0000       0101&0000 = 0000  如果按键一直保持同样的状态，输出结果为0
+ 161   1        Key_Old = Key_Value;
+ 162   1        
+ 163   1        
+ 164   1        
+ 165   1        
+ 166   1        //根据代码需求发生变化
+ 167   1        switch(Key_Down)
+ 168   1        {
+ 169   2          case 4://模式切换按钮
+ 170   2            if ( ++Running_Mode == 3)  Running_Mode = 0;//运行模式在0-2之间切换
+ 171   2            break;
+ 172   2            
+ 173   2          case 5://运行时间切换按钮
+C51 COMPILER V9.56.0.0   MAIN                                                              03/05/2021 09:02:50 PAGE 4   
+
+ 174   2            Countdown_Sec+=60;//运行时间在每按一次S5要自动增加60s
+ 175   2            if((Countdown_Sec>=60)&(Countdown_Sec<120)) Countdown_Sec = 60;//当系统倒计时到0-60秒，加完60之后，变成
+             -60-120，强制将倒计时限位为60
+ 176   2            if((Countdown_Sec>=120)&(Countdown_Sec<180)) Countdown_Sec = 120;//当系统倒计时到60-120秒，加完60之后，
+             -变成120-180，强制将倒计时限位为120
+ 177   2            if(Countdown_Sec ==180) Countdown_Sec = 0;//从120s定时切换到0定时
+ 178   2            S5_Countdown_Sec_Sluggish = 1;//让秒递减呆滞的时间
+ 179   2            break;  
+ 180   2          
+ 181   2          case 9: //停止按钮
+ 182   2            Countdown_Sec = 0;//将运行时间清零
+ 183   2            break;  
+ 184   2      
+ 185   2            
+ 186   2          case 8:
+ 187   2            Temp_Mode ^= 1;//0-1的变化
+ 188   2            break;    
+ 189   2      
+ 190   2        }
+ 191   1        
+ 192   1        
+ 193   1        
+ 194   1      }
+ 195          
+ 196          
+ 197          
+ 198          //----------------------------------------------
+ 199          /*seg_proc */
+ 200          void Seg_Proc(void)//显示处理，显示信息生成
+ 201          {
+ 202   1        //永远不变
+ 203   1        if(Seg_Slow_Down) return;
+ 204   1        Seg_Slow_Down = 1;//减速程序
+ 205   1      
+ 206   1        
+ 207   1        
+ 208   1        //根据代码需求发生变化
+ 209   1        if(Temp_Mode == 0)
+ 210   1          sprintf(seg_string,"-%1d- %04d",(unsigned int)(Running_Mode+1),(unsigned int)Countdown_Sec);
+ 211   1        else 
+ 212   1        {
+ 213   2          temp = rd_temperature()>>4;
+ 214   2          if(temp < 50)
+ 215   2          sprintf(seg_string,"-4-  %02dC",temp);    
+ 216   2        }
+ 217   1        //永远不变
+ 218   1        Seg_Tran(seg_string, seg_buf);
+ 219   1      }
+ 220          
+ 221          //----------------------------------------------
+ 222          /*led_proc */
+ 223          void Led_Proc(void)//显示处理，显示信息生成
+ 224          {
+ 225   1        
+ 226   1        //根据代码需求发生变化
+ 227   1        if(Countdown_Sec)
+ 228   1        {   
+ 229   2        
+ 230   2          switch(Running_Mode)
+ 231   2          {
+ 232   3            case 0: ucLed |= 0x01; ucLed &= (~0x06); break;//在让L1点亮的同时，要将L2和L3关闭，L4到L8不影响
+ 233   3            case 1: ucLed |= 0x02; ucLed &= (~0x05); break;//在让L2点亮的同时，要将L1和L3关闭，L4到L8不影响
+C51 COMPILER V9.56.0.0   MAIN                                                              03/05/2021 09:02:50 PAGE 5   
+
+ 234   3            case 2: ucLed |= 0x04; ucLed &= (~0x03); break;//在让L3点亮的同时，要将L1和L2关闭，L4到L8不影响  
+ 235   3          }
+ 236   2        }
+ 237   1        else 
+ 238   1        {
+ 239   2          ucLed &= (~0x07);
+ 240   2        }
+ 241   1          
+ 242   1          
+ 243   1            
+ 244   1      }
+ 245          
+ 246          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    603    ----
+   CONSTANT SIZE    =     22    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     36    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =      1    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  4 WARNING(S),  0 ERROR(S)

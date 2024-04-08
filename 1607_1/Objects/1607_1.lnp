@@ -1,0 +1,9 @@
+".\Objects\main.obj",
+".\Objects\bsp_init.obj",
+".\Objects\bsp_key.obj",
+".\Objects\bsp_led.obj",
+".\Objects\bsp_onewire.obj",
+".\Objects\bsp_seg.obj",
+".\Objects\timer.obj" 
+TO ".\Objects\1607_1" 
+PRINT(".\Listings\1607_1.m51") RAMSIZE(256) 

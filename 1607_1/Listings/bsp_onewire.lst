@@ -1,0 +1,120 @@
+C51 COMPILER V9.56.0.0   BSP_ONEWIRE                                                       03/05/2021 07:55:18 PAGE 1   
+
+
+C51 COMPILER V9.56.0.0, COMPILATION OF MODULE BSP_ONEWIRE
+OBJECT MODULE PLACED IN .\Objects\bsp_onewire.obj
+COMPILER INVOKED BY: D:\10.1 keil51\C51\BIN\C51.EXE ..\..\Driver\bsp_onewire.c OPTIMIZE(8,SPEED) BROWSE INCDIR(..\..\Dri
+                    -ver;..\..\Sys) DEBUG OBJECTEXTEND PRINT(.\Listings\bsp_onewire.lst) TABS(2) OBJECT(.\Objects\bsp_onewire.obj)
+
+line level    source
+
+   1          #include "bsp_onewire.h"
+   2          
+   3          
+   4          ////单总线延时函数
+   5          void Delay_OneWire(unsigned int t)  
+   6          {
+   7   1        unsigned char i;
+   8   1        while(t--){
+   9   2          for(i=0;i<12;i++);
+  10   2        }
+  11   1      }
+  12          
+  13          
+  14          //通过单总线向DS18B20写一个字节
+  15          void Write_DS18B20(unsigned char dat)
+  16          {
+  17   1        unsigned char i;
+  18   1        for(i=0;i<8;i++)
+  19   1        {
+  20   2          DQ = 0;
+  21   2          DQ = dat&0x01;
+  22   2          Delay_OneWire(5);
+  23   2          DQ = 1;
+  24   2          dat >>= 1;
+  25   2        }
+  26   1        Delay_OneWire(5);
+  27   1      
+  28   1      }
+  29          
+  30          //从DS18B20读取一个字节
+  31          unsigned char Read_DS18B20(void)
+  32          {
+  33   1        unsigned char i;
+  34   1        unsigned char dat;
+  35   1      
+  36   1            
+  37   1        for(i=0;i<8;i++)
+  38   1        {
+  39   2          DQ = 0;
+  40   2          dat >>= 1;
+  41   2          DQ = 1; 
+  42   2      
+  43   2          if(DQ)  
+  44   2          {
+  45   3            dat |= 0x80;
+  46   3          }     
+  47   2          Delay_OneWire(5);
+  48   2        }
+  49   1        return dat;
+  50   1      }
+  51          
+  52          //DS18B20初始化
+  53          bit init_ds18b20(void)
+  54          {
+C51 COMPILER V9.56.0.0   BSP_ONEWIRE                                                       03/05/2021 07:55:18 PAGE 2   
+
+  55   1          bit initflag = 0;
+  56   1          
+  57   1          DQ = 1;
+  58   1          Delay_OneWire(12);
+  59   1          DQ = 0;
+  60   1      
+  61   1          Delay_OneWire(80); // 延时大于480us
+  62   1          DQ = 1;
+  63   1          Delay_OneWire(10);  // 14
+  64   1          initflag = DQ;     // initflag等于1初始化失败
+  65   1          Delay_OneWire(5);
+  66   1        
+  67   1          return initflag;
+  68   1      }
+  69          
+  70          
+  71          
+  72          
+  73          //函数名：读取温度函数
+  74          //入口参数：无
+  75          //返回值：温度高低两个字节
+  76          //函数功能：完成温度转换，并返回转换之后的温度数据;
+  77          unsigned int rd_temperature(void)
+  78          {
+  79   1        unsigned char low,high;//返回的温度数据的高低八位
+  80   1          
+  81   1        init_ds18b20();//初始化
+  82   1        Write_DS18B20(0xcc);//跳过ROM
+  83   1        Write_DS18B20(0x44);//进行温度转换
+  84   1      
+  85   1        init_ds18b20();//初始化
+  86   1        Write_DS18B20(0xcc);//跳过ROM
+  87   1        Write_DS18B20(0xbe);//读取温度
+  88   1        
+  89   1        low = Read_DS18B20();//读取低位
+  90   1        high = Read_DS18B20();//读取高位  
+  91   1        return (high<<8)|low;
+  92   1        
+  93   1      }
+  94          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    160    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----       1
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
