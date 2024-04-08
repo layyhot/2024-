@@ -1,0 +1,9 @@
+".\Objects\main.obj",
+".\Objects\timer.obj",
+".\Objects\bsp_iic.obj",
+".\Objects\bsp_init.obj",
+".\Objects\bsp_key.obj",
+".\Objects\bsp_led.obj",
+".\Objects\bsp_seg.obj" 
+TO ".\Objects\1910_1" 
+PRINT(".\Listings\1910_1.m51") RAMSIZE(256) 

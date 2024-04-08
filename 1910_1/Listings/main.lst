@@ -1,0 +1,275 @@
+C51 COMPILER V9.56.0.0   MAIN                                                              03/01/2021 15:49:55 PAGE 1   
+
+
+C51 COMPILER V9.56.0.0, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN .\Objects\main.obj
+COMPILER INVOKED BY: D:\10.1 keil51\C51\BIN\C51.EXE main.c OPTIMIZE(8,SPEED) BROWSE INCDIR(..\..\Driver;..\..\Sys) DEBUG
+                    - OBJECTEXTEND PRINT(.\Listings\main.lst) TABS(2) OBJECT(.\Objects\main.obj)
+
+line level    source
+
+   1          # include "bsp_init.h"
+   2          
+   3          # include "bsp_seg.h"
+   4          # include "timer.h"
+*** WARNING C329 IN LINE 8 OF ..\..\Sys\timer.h: single-line comment contains line-continuation
+*** WARNING C329 IN LINE 9 OF ..\..\Sys\timer.h: single-line comment contains line-continuation
+*** WARNING C329 IN LINE 17 OF ..\..\Sys\timer.h: single-line comment contains line-continuation
+*** WARNING C329 IN LINE 18 OF ..\..\Sys\timer.h: single-line comment contains line-continuation
+   5          # include "bsp_key.h"
+   6          # include "bsp_led.h"
+   7          
+   8          #include "bsp_iic.h"
+   9          
+  10          # include "stdio.h"
+  11          //-----------------------------------------------
+  12          /* 函数声明 */
+  13          //三个主体循环，基本上永远不变
+  14          void Key_Proc(void);//按键处理，底层数据变更
+  15          void Seg_Proc(void);//显示处理，显示信息生成
+  16          void Led_Proc(void);//LED处理，LED状态信息表示
+  17          
+  18          
+  19          //-----------------------------------------------
+  20          /* 全局变量声明 */
+  21          
+  22          //数码管显示专用，基本上永远不变
+  23          unsigned char seg_buf[8];//放置字符串转换后的段码到数组
+  24          unsigned char seg_string[10];//放置字符串
+  25          unsigned char pos = 0;//中断显示专用
+  26          
+  27          //LED显示专用，基本上永远不变
+  28          unsigned char ucLed;//记录LED的状态信息
+  29          
+  30          //按键专用，基本上永远不变
+  31          unsigned char Key_Value;//读取按键的数值存储变量
+  32          unsigned char Key_Down, Key_Old;//读取按键的数值存储变量  
+  33          
+  34          //按键和显示函数减速专用，基本永远不变
+  35          unsigned int Key_Slow_Down;//按键减速
+  36          unsigned int Seg_Slow_Down;//按键减速
+  37          
+  38          //滴答定时专用
+  39          unsigned long ms_Tick=0;//上电之后会一直运行下去 ，49天才会产生溢出 
+  40          
+  41          //根据代码需求发生变化
+  42          bit Vol_Fre_Disp_Mode = 0;//0-电压测量模式，1-频率测量模式
+  43          unsigned int Frequent = 0;//频率值
+  44          
+  45          bit Seg_Dis_or_Die = 1;//控制数码管亮灭，0-灭，1-亮
+  46          bit LED_Dis_or_Die = 1;//控制LED亮灭，0-灭，1-亮
+  47          
+  48          bit DAC_Output_Ctrl = 0;//控制DAC输出，0-固定2v，1-随着Rb2变化的模式
+  49          float AD_Num = 0;//指示灯专用的AD读取的数值 
+  50            
+C51 COMPILER V9.56.0.0   MAIN                                                              03/01/2021 15:49:55 PAGE 2   
+
+  51            
+  52          //-----------------------------------------------
+  53          /* main */
+  54          void main()
+  55          {
+  56   1        //根据代码需求发生变化
+  57   1        Cls_Peripheral();//关闭外设
+  58   1        Timer1Init();//定时器1初始化，并且使能定时器1中断，1ms进入一次
+  59   1        EA = 1;//打开总中断
+  60   1      
+  61   1        Timer0Init_Count();//定时器0配置成外部输入模式，对外部输入进行频率计数
+  62   1      
+  63   1        while(1)
+  64   1        {
+  65   2          //永远不变
+  66   2          Key_Proc();//按键处理，底层数据变更
+  67   2          Seg_Proc();//显示处理，显示信息生成
+  68   2          Led_Proc();//LED处理，LED状态信息表示   
+  69   2          
+  70   2        
+  71   2        }
+  72   1      
+  73   1      
+  74   1      }
+  75          
+  76          
+  77          
+  78          //-----------------------------------------------
+  79          /* Timer1_interrupt routine */
+  80          void tm1_isr() interrupt 3
+  81          {
+  82   1        ms_Tick++;//上电自动++，持续运行 
+  83   1          
+  84   1        
+  85   1        //永远不变
+  86   1        if(++Key_Slow_Down == 10) Key_Slow_Down = 0;
+  87   1        if(++Seg_Slow_Down == 500) Seg_Slow_Down = 0;
+  88   1        
+  89   1        //取时间间隔
+  90   1        if(!(ms_Tick%1000)) //每1s读数
+  91   1        {
+  92   2          Frequent = ((TH0<<8)|TL0);
+  93   2          TL0 = 0;    //设置定时初值
+  94   2          TH0 = 0;    //设置定时初值  
+  95   2        }
+  96   1        
+  97   1      
+  98   1      
+  99   1      
+ 100   1      
+ 101   1        //永远不变
+ 102   1        Seg_Disp(seg_buf, pos);//数码管显示刷新
+ 103   1        if( ++pos == 8 )  pos = 0;
+ 104   1        
+ 105   1        Led_Disp(ucLed);//LED显示
+ 106   1        
+ 107   1        
+ 108   1      }
+ 109          
+ 110          
+ 111          
+ 112          //-----------------------------------------------
+C51 COMPILER V9.56.0.0   MAIN                                                              03/01/2021 15:49:55 PAGE 3   
+
+ 113          /*key_proc */
+ 114          
+ 115          void Key_Proc(void)//按键处理，底层数据变更
+ 116          {
+ 117   1        //永远不变
+ 118   1        if(Key_Slow_Down) return;
+ 119   1        Key_Slow_Down = 1;//减速程序
+ 120   1        
+ 121   1        Key_Value = Key_Read_BTN();//读取按键按下的编号
+ 122   1        Key_Down = Key_Value & (Key_Old ^ Key_Value);// (0000^0101) = 0101     0101 & 0101 =0101  ,如果按键发生了
+             -下降沿的变化，输出结果和本次按键数值相同
+ 123   1                                                // (0101^0101) = 0000       0101&0000 = 0000  如果按键一直保持同样的状态，输出结果为0
+ 124   1        Key_Old = Key_Value;
+ 125   1        
+ 126   1        
+ 127   1        
+ 128   1        
+ 129   1        //根据代码需求发生变化
+ 130   1        switch(Key_Down)//如果捕捉到下降沿跳变
+ 131   1        {
+ 132   2          case 4://电压模式和频率模式的切换
+ 133   2            Vol_Fre_Disp_Mode ^= 1;//0-电压模式，1-频率模式
+ 134   2            break;
+ 135   2            
+ 136   2          case 7://控制数码管关闭或者打开
+ 137   2            Seg_Dis_or_Die ^= 1;//0-灭，1-亮
+ 138   2            break;    
+ 139   2          
+ 140   2          case 5://控制DAC输出    
+ 141   2            DAC_Output_Ctrl^= 1;//0-固定2v，1-随着Rb2变化的模式
+ 142   2            break;      
+ 143   2          
+ 144   2          case 6://控制LED关闭或者打开
+ 145   2            LED_Dis_or_Die ^= 1;//0-灭，1-亮
+ 146   2            break;  
+ 147   2          
+ 148   2        }
+ 149   1        
+ 150   1      }
+ 151          
+ 152          
+ 153          
+ 154          //----------------------------------------------
+ 155          /*seg_proc */
+ 156          void Seg_Proc(void)//显示处理，显示信息生成
+ 157          {
+ 158   1        //永远不变
+ 159   1        if(Seg_Slow_Down) return;
+ 160   1        Seg_Slow_Down = 1;//减速程序
+ 161   1      
+ 162   1        //借用你的地方，其实是DAC功能,0-固定2v，1-随着Rb2变化的模式
+ 163   1        if(DAC_Output_Ctrl == 0)
+ 164   1          Pcf8591_Dac(0x66);//固定输出2v
+ 165   1        else
+ 166   1        {
+ 167   2          Pcf8591_Dac(Pcf8591_Adc(Adj_Res_Channel));//先读过来，在转换出去
+ 168   2        }
+ 169   1        
+ 170   1      
+ 171   1        
+ 172   1        //根据代码需求发生变化
+ 173   1      
+C51 COMPILER V9.56.0.0   MAIN                                                              03/01/2021 15:49:55 PAGE 4   
+
+ 174   1        if(Seg_Dis_or_Die)
+ 175   1        {
+ 176   2          if(Vol_Fre_Disp_Mode == 0)
+ 177   2            sprintf(seg_string,"U    %3.2f",Pcf8591_Adc(Adj_Res_Channel)/51.0);
+ 178   2          else 
+ 179   2            sprintf(seg_string,"F %6d",Frequent);//读取频率值 
+ 180   2        } 
+ 181   1        else 
+ 182   1            sprintf(seg_string,"        ");//不显示内容 
+ 183   1        
+ 184   1      
+ 185   1        
+ 186   1        //永远不变
+ 187   1        Seg_Tran(seg_string, seg_buf);
+ 188   1      }
+ 189          
+ 190          //----------------------------------------------
+ 191          /*led_proc */
+ 192          void Led_Proc(void)//显示处理，显示信息生成
+ 193          {
+ 194   1        
+ 195   1        if(LED_Dis_or_Die)//控制LED亮灭，0-灭，1-亮
+ 196   1        { 
+ 197   2            //L1和L2两个灯控制电压模式还是频率模式
+ 198   2            if(Vol_Fre_Disp_Mode == 0)//0-电压模式 L1亮，L2灭；
+ 199   2            {
+ 200   3              ucLed &= (~0x03);//低两位清零
+ 201   3              ucLed |= 0x01; //L1亮
+ 202   3            }
+ 203   2            else//1-频率模式 L2亮，L1灭
+ 204   2            {
+ 205   3              ucLed &= (~0x03);//低两位清零
+ 206   3              ucLed |= 0x02; //L1亮
+ 207   3            }   
+ 208   2            
+ 209   2            //L3控制显示实时电压的大小，匹配灯，1.5-2.5-3.5，在1.5-2.5亮，>3.5亮
+ 210   2            AD_Num = Pcf8591_Adc(Adj_Res_Channel)/51.0;
+ 211   2            if(((AD_Num>=1.5)&&(AD_Num<2.5))||(AD_Num>=3.5))
+ 212   2              ucLed |= 0x04; //L3亮 
+ 213   2            else 
+ 214   2              ucLed &= (~0x04); //L3灭      
+ 215   2      
+ 216   2            
+ 217   2            //L4显示频率大小，匹配灯，大于等于1000且小于等于5000，或大于等于10000HZ亮
+ 218   2            if(((Frequent>1000)&&(Frequent<5000))||(Frequent>10000))
+ 219   2              ucLed |= 0x08; //L4亮 
+ 220   2            else 
+ 221   2              ucLed &= (~0x08); //L4灭  
+ 222   2            
+ 223   2            //L5输出模式，0-固定2v，熄灭；1-随着Rb2变化模式，亮。
+ 224   2            if(DAC_Output_Ctrl)
+ 225   2              ucLed |= 0x10; //L5亮     
+ 226   2            else
+ 227   2              ucLed &= (~0x10); //L5灭    
+ 228   2        }
+ 229   1        else//如果不允许输出，熄灭LED
+ 230   1          ucLed = 0;
+ 231   1        
+ 232   1        
+ 233   1        
+ 234   1        
+ 235   1        
+C51 COMPILER V9.56.0.0   MAIN                                                              03/01/2021 15:49:55 PAGE 5   
+
+ 236   1      }
+ 237          
+ 238          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    582    ----
+   CONSTANT SIZE    =     26    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     37    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =      4    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  4 WARNING(S),  0 ERROR(S)

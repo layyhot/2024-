@@ -1,0 +1,98 @@
+C51 COMPILER V9.56.0.0   BSP_KEY                                                           03/01/2021 15:46:39 PAGE 1   
+
+
+C51 COMPILER V9.56.0.0, COMPILATION OF MODULE BSP_KEY
+OBJECT MODULE PLACED IN .\Objects\bsp_key.obj
+COMPILER INVOKED BY: D:\10.1 keil51\C51\BIN\C51.EXE ..\..\Driver\bsp_key.c OPTIMIZE(8,SPEED) BROWSE INCDIR(..\..\Driver;
+                    -..\..\Sys) DEBUG OBJECTEXTEND PRINT(.\Listings\bsp_key.lst) TABS(2) OBJECT(.\Objects\bsp_key.obj)
+
+line level    source
+
+   1          # include "bsp_key.h"
+   2          
+   3          //函数名：按键码值读取函数
+   4          //入口参数：无
+   5          //返回值：按键的码值
+   6          //函数功能：返回按键码。
+   7          unsigned char Key_Read(void)
+   8          {
+   9   1        unsigned int Key_New;//16位的数值，用于存放P3直接读取的第四位键值
+  10   1        unsigned char Key_Value;//返回值
+  11   1        
+  12   1        P44 = 0; P42 = 1; P35 = 1; P34 = 1;  // 第一列扫描
+  13   1        Key_New = P3 & 0X0F; //P3 = 0000 1000 ---P37~P30
+  14   1      
+  15   1        P44 = 1; P42 = 0; P35 = 1; P34 = 1;  // 第二列扫描
+  16   1        Key_New = (Key_New << 4) | (P3 & 0X0F); //将原来的数值挪到次4位，本次数值放到最低4位，占用了8位
+  17   1      
+  18   1        P44 = 1; P42 = 1; P35 = 0; P34 = 1;  // 第三列扫描
+  19   1        Key_New = (Key_New << 4) | (P3 & 0X0F); //将原来的数值挪到次次4位，本次数值放到最低4位，占用了12位
+  20   1        
+  21   1        P44 = 1; P42 = 1; P35 = 1; P34 = 0;  // 第四列扫描
+  22   1        Key_New = (Key_New << 4) | (P3 & 0X0F); //将原来的数值挪到次次4位，本次数值放到最低4位，占用了16位
+  23   1      
+  24   1      
+  25   1        switch(~Key_New)//Key_Value的数值对应按键的编号
+  26   1        {
+  27   2          case 0x8000: Key_Value = 4; break;
+  28   2          case 0x4000: Key_Value = 5; break;
+  29   2          case 0x2000: Key_Value = 6; break;
+  30   2          case 0x1000: Key_Value = 7; break;    
+  31   2        
+  32   2          case 0x0800: Key_Value = 8; break;
+  33   2          case 0x0400: Key_Value = 9; break;
+  34   2          case 0x0200: Key_Value = 10; break;
+  35   2          case 0x0100: Key_Value = 11; break;   
+  36   2        
+  37   2          case 0x0080: Key_Value = 12; break;
+  38   2          case 0x0040: Key_Value = 13; break;
+  39   2          case 0x0020: Key_Value = 14; break;
+  40   2          case 0x0010: Key_Value = 15; break;     
+  41   2        
+  42   2          case 0x0008: Key_Value = 16; break;
+  43   2          case 0x0004: Key_Value = 17; break;
+  44   2          case 0x0002: Key_Value = 18; break;
+  45   2          case 0x0001: Key_Value = 19; break;     
+  46   2        
+  47   2          default : Key_Value = 0;
+  48   2        }
+  49   1        
+  50   1        return Key_Value;
+  51   1      
+  52   1      }
+  53            
+  54            
+C51 COMPILER V9.56.0.0   BSP_KEY                                                           03/01/2021 15:46:39 PAGE 2   
+
+  55          //函数名：按键码值读取函数-独立按键
+  56          //入口参数：无
+  57          //返回值：按键的码值
+  58          //函数功能：返回按键码。
+  59          unsigned char Key_Read_BTN(void)
+  60          {
+  61   1      
+  62   1        unsigned char Key_Value;//返回值
+  63   1      
+  64   1        if(P30 == 0)  Key_Value = 7;
+  65   1        else if(P31 == 0) Key_Value = 6;
+  66   1        else if(P32 == 0) Key_Value = 5;  
+  67   1        else if(P33 == 0) Key_Value = 4;  
+  68   1        else Key_Value = 0;
+  69   1        
+  70   1        return Key_Value;
+  71   1      
+  72   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    294    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----       1
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

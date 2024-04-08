@@ -1,0 +1,42 @@
+C51 COMPILER V9.56.0.0   BSP_LED                                                           03/01/2021 15:46:40 PAGE 1   
+
+
+C51 COMPILER V9.56.0.0, COMPILATION OF MODULE BSP_LED
+OBJECT MODULE PLACED IN .\Objects\bsp_led.obj
+COMPILER INVOKED BY: D:\10.1 keil51\C51\BIN\C51.EXE ..\..\Driver\bsp_led.c OPTIMIZE(8,SPEED) BROWSE INCDIR(..\..\Driver;
+                    -..\..\Sys) DEBUG OBJECTEXTEND PRINT(.\Listings\bsp_led.lst) TABS(2) OBJECT(.\Objects\bsp_led.obj)
+
+line level    source
+
+   1          # include "bsp_led.h"
+   2          
+   3          
+   4          
+   5          
+   6          //函数名：LED显示函数
+   7          //入口参数：要显示数值的十六进制数据，例如0XAA=1010 1010，L8~L1的顺序
+   8          //返回值：无
+   9          //函数功能：按照入口参数顺序将LED点亮，1为亮，0为灭
+  10          
+  11          void Led_Disp(unsigned char ucLed)
+  12          {
+  13   1        
+  14   1        P0 = ~ucLed;//将输入数据取反，做好数据准备，1为亮，0为灭。
+  15   1        P2 = P2 & 0x1F | 0x80; // 0x80，选通Y4，也就是LED的锁存器，将数据透传过去
+  16   1        P2 &= 0x1F; //将打开的锁存器关闭，使任何一个锁存器都不打开
+  17   1      
+  18   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =     16    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
